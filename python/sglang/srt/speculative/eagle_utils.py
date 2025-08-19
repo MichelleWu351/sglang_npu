@@ -302,7 +302,7 @@ class EagleVerifyInput:
                 batch.seq_lens,
                 end_offset,
                 batch.out_cache_loc,
-                bs,
+                self.draft_token_num
             )
         else:
             assign_req_to_token_pool[(bs,)](
@@ -646,7 +646,7 @@ class EagleVerifyInput:
                         batch.seq_lens,
                         batch.seq_lens + accept_length + 1,
                         batch.out_cache_loc,
-                        bs,
+                        self.draft_token_num
                     )
                 else:
                     assign_req_to_token_pool[(bs,)](
@@ -687,7 +687,7 @@ class EagleVerifyInput:
                         batch.seq_lens,
                         batch.seq_lens + accept_length + 1,
                         batch.out_cache_loc[accept_index],
-                        bs,
+                        self.draft_token_num
                     )
                 else:
                     assign_req_to_token_pool[(bs,)](
@@ -829,32 +829,17 @@ def assign_req_to_token_pool_native(
     start_offset: torch.Tensor,
     end_offset: torch.Tensor,
     out_cache_loc: torch.Tensor,
-    bs: int,
+    draft_token_num: int,
 ):
-    device = req_to_token.device
     global tensor_zero
     if tensor_zero is None:
-        tensor_zero = torch.tensor([0], device=device, dtype=torch.int32)
-    bs_range = torch.arange(bs, device=device, dtype=torch.int32)
-    lengths = end_offset - start_offset
-    total_length = lengths.sum()
-    cumsum_lengths = torch.cat(
-        [tensor_zero, torch.cumsum(lengths, dim=0)[:-1].to(dtype=torch.int32)]
-    )
-
-    row_indices = torch.repeat_interleave(bs_range, lengths)
-    repeat_cumsum = torch.repeat_interleave(cumsum_lengths, lengths)
-    arange_total = torch.arange(total_length, device=device, dtype=torch.int32)
-    offsets = arange_total - repeat_cumsum
-
-    col_indices = (
-        torch.repeat_interleave(start_offset.to(dtype=torch.int32), lengths) + offsets
-    )
-    src_indices = torch.repeat_interleave(cumsum_lengths, lengths) + offsets
-
+        tensor_zero = torch.tensor([0], device=req_to_token.device, dtype=torch.int32)
+    out_cache_loc_length = end_offset - start_offset
+    out_cache_loc_cumsum_length = torch.cumsum(out_cache_loc_length, dim=0, dtype=torch.int32)
+    out_cache_loc_idx = torch.cat((tensor_zero, out_cache_loc_cumsum_length))
     token_pool = req_to_token[req_pool_indices]
-    token_pool[row_indices, col_indices] = out_cache_loc[src_indices]
-    req_to_token[req_pool_indices] = token_pool
+    token_pool = torch.ops.npu.cache_loc_assign(token_pool, start_offset, end_offset, out_cache_loc, out_cache_loc_idx, draft_token_num)
+    req_to_token[req_to_token] = token_pool
 
 
 @triton.jit

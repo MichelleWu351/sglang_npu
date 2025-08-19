@@ -302,7 +302,7 @@ class EagleVerifyInput:
                 batch.seq_lens,
                 end_offset,
                 batch.out_cache_loc,
-                self.draft_token_num
+                self.draft_token_num,
             )
         else:
             assign_req_to_token_pool[(bs,)](
@@ -646,7 +646,7 @@ class EagleVerifyInput:
                         batch.seq_lens,
                         batch.seq_lens + accept_length + 1,
                         batch.out_cache_loc,
-                        self.draft_token_num
+                        self.draft_token_num,
                     )
                 else:
                     assign_req_to_token_pool[(bs,)](
@@ -687,7 +687,7 @@ class EagleVerifyInput:
                         batch.seq_lens,
                         batch.seq_lens + accept_length + 1,
                         batch.out_cache_loc[accept_index],
-                        self.draft_token_num
+                        self.draft_token_num,
                     )
                 else:
                     assign_req_to_token_pool[(bs,)](
@@ -835,10 +835,19 @@ def assign_req_to_token_pool_native(
     if tensor_zero is None:
         tensor_zero = torch.tensor([0], device=req_to_token.device, dtype=torch.int32)
     out_cache_loc_length = end_offset - start_offset
-    out_cache_loc_cumsum_length = torch.cumsum(out_cache_loc_length, dim=0, dtype=torch.int32)
+    out_cache_loc_cumsum_length = torch.cumsum(
+        out_cache_loc_length, dim=0, dtype=torch.int32
+    )
     out_cache_loc_idx = torch.cat((tensor_zero, out_cache_loc_cumsum_length))
     token_pool = req_to_token[req_pool_indices]
-    token_pool = torch.ops.npu.cache_loc_assign(token_pool, start_offset, end_offset, out_cache_loc, out_cache_loc_idx, draft_token_num)
+    token_pool = torch.ops.npu.cache_loc_assign(
+        token_pool,
+        start_offset,
+        end_offset,
+        out_cache_loc,
+        out_cache_loc_idx,
+        draft_token_num,
+    )
     req_to_token[req_to_token] = token_pool
 
 

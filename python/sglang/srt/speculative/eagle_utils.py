@@ -848,7 +848,7 @@ def assign_req_to_token_pool_native(
         out_cache_loc_idx,
         draft_token_num,
     )
-    req_to_token[req_to_token] = token_pool
+    req_to_token[req_pool_indices] = token_pool
 
 
 @triton.jit

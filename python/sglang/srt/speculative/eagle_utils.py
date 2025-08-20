@@ -843,8 +843,8 @@ def assign_req_to_token_pool_native(
     token_pool = req_to_token[req_pool_indices]
     token_pool = torch.ops.npu.cache_loc_assign(
         token_pool,
-        start_offset.to(torch.int32),
-        end_offset.to(torch.int32),
+        start_offset,
+        end_offset,
         out_cache_loc,
         out_cache_loc_idx,
         draft_token_num,

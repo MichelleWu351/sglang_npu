@@ -831,6 +831,7 @@ def assign_req_to_token_pool_native(
     out_cache_loc: torch.Tensor,
     draft_token_num: int,
 ):
+    import sgl_kernel_npu
     global tensor_zero
     if tensor_zero is None:
         tensor_zero = torch.tensor([0], device=req_to_token.device, dtype=torch.int32)
@@ -842,8 +843,8 @@ def assign_req_to_token_pool_native(
     token_pool = req_to_token[req_pool_indices]
     token_pool = torch.ops.npu.cache_loc_assign(
         token_pool,
-        start_offset,
-        end_offset,
+        start_offset.to(torch.int32),
+        end_offset.to(torch.int32),
         out_cache_loc,
         out_cache_loc_idx,
         draft_token_num,

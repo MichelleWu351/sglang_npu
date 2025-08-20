@@ -264,12 +264,19 @@ class W8A8Int8Config(QuantizationConfig):
                     prefix_in_quant_config = prefix.replace(
                         proj_name, self.packed_modules_mapping[proj_name][0]
                     )
-                self.is_dynamic = (
-                    self.quant_description[prefix_in_quant_config + ".weight"]
-                    == "W8A8_DYNAMIC"
-                )
-                if self.is_layer_skipped(prefix, self.packed_modules_mapping):
-                    return UnquantizedLinearMethod()
+                if len(self.quant_description) == 0:
+                    self.is_dynamic = True
+                    if should_ignore_layer(
+                            prefix, ignore=self.ignore, fused_mapping=self.packed_modules_mapping
+                    ):
+                        return UnquantizedLinearMethod()
+                else:
+                    self.is_dynamic = (
+                            self.quant_description[prefix_in_quant_config + ".weight"]
+                            == "W8A8_DYNAMIC"
+                    )
+                    if self.is_layer_skipped(prefix, self.packed_modules_mapping):
+                        return UnquantizedLinearMethod()
                 return (
                     NPU_W8A8DynamicLinearMethod(self)
                     if self.is_dynamic

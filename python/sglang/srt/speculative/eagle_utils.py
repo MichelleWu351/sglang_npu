@@ -39,6 +39,8 @@ if is_cuda():
 elif is_hip():
     from sgl_kernel import fast_topk, verify_tree_greedy
 elif is_npu():
+    import sgl_kernel_npu
+
     tensor_zero = None
     tensor_one = None
 
@@ -831,7 +833,6 @@ def assign_req_to_token_pool_native(
     out_cache_loc: torch.Tensor,
     draft_token_num: int,
 ):
-    import sgl_kernel_npu
     global tensor_zero
     if tensor_zero is None:
         tensor_zero = torch.tensor([0], device=req_to_token.device, dtype=torch.int32)
